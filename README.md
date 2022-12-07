@@ -28,3 +28,24 @@ This is for a basic one interface server. If more interfaces are available VM ne
 ## Database Overview
 Apache Guacamole database is unaltered. TODO: upload mysqldump of database structure
 ![databaseOverview](https://user-images.githubusercontent.com/54869540/206069606-3d887a57-2a86-4557-960b-5a40b8b85f7d.png)
+
+## Lab Setup
+VM Template Setup
+1. Download ISO in proxmox 
+2. Create VM make sure bridge is set to vmbr1 and storage is vm stogage
+4. Modify VM to hearts content
+5. Convert to VM template
+6. In Admin Home Page go to VM Template Setup
+7. Select VM id # from current VMs on Proxmox
+8. Enter id in text box and submit
+
+User and group setup
+1.  Create users in apache guacamole
+2.  Create a group
+3.  Assign users to group
+
+Lab creation and assignment
+1. In Admin Home Page go to Lab Setup
+2. Enter a lab name and vm template id # and submit
+3. Go back to Admin Home Page and go into Lab Group Assign
+4. Enter group id and lab id and submit.
