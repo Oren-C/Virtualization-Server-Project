@@ -1,0 +1,5 @@
+{
+    "require": {
+        "corsinvest/cv4pve-api-php": "^7.2"
+    }
+}

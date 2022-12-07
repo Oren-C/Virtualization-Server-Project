@@ -1,0 +1,157 @@
+<?php
+require "detectAdmin.php";
+//echo "hello";
+//echo var_dump(getallheaders());
+//echo $_SERVER["REQUEST_URI"];
+
+
+
+require_once __DIR__.'/../../vendor/autoload.php';
+$configs = require(__DIR__.'/../../includes/configs/proxAuth.php');
+$client = new Corsinvest\ProxmoxVE\Api\PveClient($configs["host"]);
+$multarr = array();
+$v2multarr = array();
+//Let's not do multidimensional lets do something like this:
+
+// $multarr[$vm->vmid] = $vm->name;
+//then I can just check if it exists in the array if so check name.
+
+$sqlarr = array();
+// Now pull from sql vm templates table and compare
+try{
+    //TODO: Uncomment this
+    //$dbh = require "../configs/proxDbConfig.php";
+    //TODO: COMMENT THIS OUT
+
+    require_once __DIR__."/../../includes/sqlfunctions/vmSqlFuncs.php";
+    $sqlarr = getAllVmTemplatesFromDatabase();
+    //echo "here is the sqlarr after loop:";
+    //echo var_dump($sqlarr);
+
+}catch (PDOException $ed){
+    echo $ed;
+}
+
+if($client->login($configs["username"],$configs["password"],$configs["realm"])){
+
+    foreach ($client->getNodes()->get($configs['node'])->getQemu()->Vmlist()->getResponse()->data as $vm) {
+        //echo "\n" . $vm->vmid . " - " . $vm->name;
+        $checked = False;
+        if (isset($sqlarr[$vm->vmid]) && $sqlarr[$vm->vmid] == $vm->name){
+            $checked = True;
+            //echo "hit checkstatement";
+        }
+
+        $multarr[] = array($vm->vmid, $vm->name, $checked);
+        $v2multarr[$vm->vmid] = array($vm->name, $checked);
+        //$multarr[$vm->vmid] = $vm->name;
+    }
+
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    //make changes
+
+    echo "<br>";
+    //verify inputs exist and create new array
+    $sqlInsertArr = array();
+    foreach($multarr as $item){
+        //echo "testinPOST";
+        if(isset($_POST[$item[1]])){
+            echo var_dump($item);
+            $sqlInsertArr[] = array($item[0], $item[1]);
+            $item[2] = True;
+        }else{
+            //echo "hit a false";
+            $item[2] = False;
+        }
+    }
+
+    foreach($v2multarr as $tmpVmid => $nameCheckArr){
+
+    }
+
+    require_once __DIR__."/../../includes/sqlfunctions/vmSqlFuncs.php";
+    //This is messing up with foreign keys
+    //Delete ones that are no longer selected
+    deleteAllFromTable("vm_templates");
+
+    //then do a insert on duplicate key update ONLY WORKS WITH MYSQL (different name for other databases)
+    if(count($sqlInsertArr) > 0){
+        insertMultiArrayIgnore("vm_templates", $sqlInsertArr);
+    }
+    //This is needed to refresh page. Otherwise checkboxes don't update for some reason.
+    header("Refresh:0");
+
+}
+/*
+function udiffCompare($a, $b){
+    return $a["vmid"] - $b["vmid"];
+}
+$result = array_udiff($multarr, $sqlarr, 'udiffCompare');
+
+echo "<br>";
+echo "The results <br>";
+echo var_dump($result);
+*/
+?>
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html" />
+    <title>VM Template Select</title>
+    <meta name="description" content="Poop page"/>
+    <meta name="keywords" content="poop"/>
+    <meta charset="UTF-8">
+    <link href="../style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+<div class="w3-bar w3-top w3-black w3-large" style="z-index:4">
+      <span class="w3-bar-item w3-left">
+        Welcome, <?php echo $_SESSION["username"]; ?> - <a href="../login_form/logout.php">Logout</a>
+          <a href="../serversv2.php">Home</a>
+          <?php if($_SESSION["admin"]) : ?>
+              <a href="./adminhome.php">Admin Home</a>
+          <?php endif; ?>
+      </span>
+    <span class="w3-bar-item w3-right">VirtualMachines</span>
+</div>
+
+<header class="w3-container" style="padding-top:40px">
+    <h1><b>VM Template Selection</b></h1>
+</header>
+
+<p style="color: red">Warning: If template is removed, associated lab will also be deleted from database.</p>
+<p>Below is a table of virtual machines that are currently on proxmox regardless of running status.</p>
+<p>The checkbox determines whether they are currenlty set in this application as a template for a lab.</p>
+<p>So if you ONLY want to select a VM to be used in a lab check the checkbox and click submit. DO NOT UNCHECK ANYTHING!</p>
+<p>If you want to remove a template from a lab uncheck that VM and submit.</p>
+
+<form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']) ?>" method="post">
+    <table class="w3-table w3-striped w3-white">
+
+    <?php foreach($multarr as $item) : ?>
+        <tr>
+            <td>
+                <input type="checkbox" name="<?php echo $item[1]; ?>" value="<?php echo $item[0]; ?>" <?php echo ((bool)$item[2]) ? "checked" : ""; ?>>
+            </td>
+            <td><?php echo $item[0]." ".$item[1]." "." 2"; ?></td>
+        </tr>
+    <?php endforeach; ?>
+
+
+
+
+    </table>
+    <button type="submit">Submit changes</button>
+
+</form>
+
+</body>
